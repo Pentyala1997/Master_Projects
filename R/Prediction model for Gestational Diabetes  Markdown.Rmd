@@ -1,0 +1,277 @@
+---
+title: "Group Project"
+author: "Group 2"
+date: '2022-06-06'
+output: word_document
+---
+
+```{r}
+# install.packages("corrplot")
+# install.packages("pscl")
+# install.packages("caret")
+# install.packages("InformationValue")
+# install.packages("car")
+
+require(corrplot)
+require(pscl)
+require(car)
+require(tidyverse)
+require(ROCR)
+# require(InformationValue)
+require(caret)
+```
+
+
+```{r}
+# A LOADING THE DATA SET
+patients_data <- read.csv("patients.csv",header = TRUE)
+
+head(patients_data)
+```
+
+
+
+```{r}
+# B SUMMARY OF THE DATA SET
+summary(patients_data)
+
+table(x=patients_data$Pregnancies)
+
+sum(patients_data$Pregnancies==0)
+
+```
+
+```{r}
+# C Replacing the missing values with median data
+
+# HOW MANY MISSING VALUES ARE THERE IN EACH COLUMN
+colSums(patients_data==0)
+
+patients_data_withoutO<-patients_data
+
+column_names = colnames(patients_data_withoutO)
+
+# Replacing missing values with median 
+for (x in 1:(length(column_names)-1)){
+  col_median = median(patients_data_withoutO[,x])
+  patients_data_withoutO[x][patients_data_withoutO[x]==0]<-col_median
+}
+
+# HOW MANY MISSING VALUES ARE THERE IN EACH COLUMN after replacing with median 
+colSums(patients_data_withoutO==0)
+```
+
+```{r}
+
+# D FINDING OUTLIERS IN EACH INDEPENDANT VARIABLE
+outliers.count <- function(data) {
+  
+  return(  
+    
+    sum(data < quantile(data,p=0.25) - 1.5 * IQR(data) ) +
+      sum(data > quantile(data,p=0.75) + 1.5 * IQR(data) )
+    
+  )
+}
+
+# D OUTLIERS VAUES IN EACH COLUMN OF DATA SET
+
+# sapply(patients_data_withoutO, function(x) x %in% boxplot(patients_data_withoutO,plot = FALSE)$out)
+# 
+boxplot(patients_data_withoutO)
+# 
+
+# getting the count of outliers in each independant variable 
+apply(
+  X=patients_data_withoutO,
+  FUN = outliers.count,
+  MARGIN = 2
+)
+
+# get the values of outliers in each indepenat variable 
+for (x in 1:(length(column_names))){
+  print(column_names[x])
+  outliers <- boxplot(patients_data_withoutO[[x]], plot = FALSE)$out
+  print(outliers)
+}
+
+```
+
+```{r}
+# E REPLACING ALL OULIERS WITH MEDIAN
+
+patients_data.cleaned <- patients_data_withoutO
+
+for (x in column_names){
+  print( boxplot(patients_data.cleaned[[x]], plot = FALSE)$out)
+  print(x)
+  patients_data.cleaned[,x][patients_data.cleaned[,x] %in% boxplot(patients_data.cleaned[,x], plot = FALSE)$out] <- median(patients_data.cleaned[,x])
+  print( boxplot(patients_data.cleaned$Pregnancies, plot = FALSE)$out)
+}
+
+boxplot(patients_data)
+
+boxplot(patients_data.cleaned)
+
+
+# OUTLIER COUNT AFTER REPLACEMENT WITH MEDIAN
+apply(
+  X=patients_data.cleaned,
+  FUN = outliers.count,
+  MARGIN = 2
+)
+```
+
+
+```{r}
+# F)	Find the best performing variables/features using a correlogram. 
+patient_data.correlation <- cor(patients_data.cleaned)
+
+head(round(patient_data.correlation,2))
+
+corrplot::corrplot(patient_data.correlation, method = "number", type='lower')
+
+# Correlation Greater > 49 percent 
+# 
+# BMI and Skin Thickness
+# Age and Pregnancies
+# Diagnosis and Glucose
+
+```
+
+
+```{r}
+# g)	Standardize your features to Gaussian distribution.
+patient_final_data_set<-as.data.frame(scale(patients_data.cleaned[1:8]))
+# data<-as.data.frame(scale(patient_final_data_set[1:8]))
+head(patient_final_data_set)
+
+patient_final_data_set$Diagnosis=patients_data$Diagnosis
+
+head(patient_final_data_set)
+# processing the data
+# preproc1 <- preProcess(data.frame(patientsX), method=c("center", "scale"))
+
+# standardize the prepossessed data
+# patientsXStandardized <- predict(preproc1, data.frame(patientsX))
+# head(patientsXStandardized)
+
+```
+
+
+```{r}
+# h)	Create a logistic regression model (call it LRM1) using your best features. Describe your model. 
+
+# From the correlation diagram I am dropping Age and SkinThickness features for model 1
+
+# MODEL LRM-1
+# lrm.1.dataset = patients_data.cleaned[,!(names(patients_data.cleaned) %in% c("Pregnancies","BMI"))]
+lrm.1.dataset = patient_final_data_set[,!(names(patient_final_data_set) %in% c("Pregnancies","BMI"))]
+
+head(lrm.1.dataset)
+
+# Setting Seed to make the test and train data sets reproducible
+set.seed(143)
+
+# Use 70% of data set as training set and remaining 30% as testing set
+train_and_test_samples_m1 <- sample(c(TRUE, FALSE), nrow(lrm.1.dataset), replace=TRUE, prob=c(0.7,0.3))
+
+train_data_m1 <- lrm.1.dataset[train_and_test_samples_m1, ]
+test_data_m1 <- lrm.1.dataset[!train_and_test_samples_m1, ]  
+
+
+# fitting the model using train data set
+Lrm1 <- glm(Diagnosis~., family="binomial", data=train_data_m1)
+
+
+
+summary(Lrm1)
+
+# step(Lrm1,direction="backward")
+
+# TO COMPUTE R SQUARE OF THE MODEL 
+print("R-Squared Value of the model")
+pscl::pR2(Lrm1)["McFadden"]
+
+# ANOVA TABLE FOR MODEL 2 (LRM2)
+anova(Lrm1)
+
+
+# TO CHECK MULTI COLLINEARITY OF THE MODEL 
+print("To check Multi-collinearity  of the model")
+car::vif(Lrm1)
+```
+
+
+
+```{r}
+# i)	Create classification report of your model(LRM1). 
+
+model1_prob<-predict(Lrm1,test_data_m1,type="response")
+
+
+model1_predicted<- ifelse(model1_prob>0.5,1,0)
+
+confusion_matrix1 <- table(model1_predicted,test_data_m1$Diagnosis)
+
+caret::confusionMatrix(confusion_matrix1,mode = "everything", positive="1")
+
+model1_pred<- ROCR::prediction(model1_prob,test_data_m1$Diagnosis)
+model1_perf<-ROCR::performance(model1_pred,"acc")
+
+plot(model1_perf)
+```
+
+```{r}
+# MODEL LRM-2
+
+# lrm.2.dataset<-patients_data.cleaned
+
+lrm.2.dataset<-patient_final_data_set
+
+# Setting Seed to make the test and train datasets reproducable
+set.seed(143)
+
+# Use 70% of dataset as training set and remaining 30% as testing set
+train_and_test_samples_m2 <- sample(c(TRUE, FALSE), nrow(lrm.2.dataset), replace=TRUE, prob=c(0.7,0.3))
+
+train_data_m2 <- lrm.2.dataset[train_and_test_samples_m2, ]
+test_data_m2 <- lrm.2.dataset[!train_and_test_samples_m2, ]  
+
+
+# fitting the model using train data set
+Lrm2 <- glm(Diagnosis~., family="binomial", data=train_data_m2)
+
+summary(Lrm2)
+
+# ANOVA TABLE FOR MODEL 2 (LRM2)
+anova(Lrm2)
+
+# TO COMPUTE R SQUARE OF THE MODEL 
+print("R-Squared Value of the model")
+pscl::pR2(Lrm2)["McFadden"]
+
+
+# TO CHECK MULTI COLLINEARITY OF THE MODEL 
+print("To check Multi-collinearity  of the model")
+car::vif(Lrm2)
+```
+
+```{r}
+# model 2 classification report
+model2_prob<-predict(Lrm2,test_data_m2,type="response")
+
+model2_predicted<- ifelse(model2_prob>0.5,1,0)
+
+confusion_matrix2 <- table(Predicted=model2_predicted,Actual=test_data_m1$Diagnosis)
+
+caret::confusionMatrix(confusion_matrix2, mode = "everything", positive="1")
+
+model2_pred<- ROCR::prediction(model2_prob,test_data_m2$Diagnosis)
+
+model2_perf<-ROCR::performance(model2_pred,"acc")
+
+plot(model1_perf)
+
+```
+

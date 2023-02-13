@@ -1,0 +1,199 @@
+---
+title: "assignment_3"
+output: word_document
+date: '2022-06-03'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#1. Complete the practice exercise (t-test_example) posted in the week 3 content folder. This exercise uses the NHANES dataset for t-test. The R code and dataset are provided
+
+```{r}
+# import nhanes dataset
+nhanes.2016 <- read.csv("nhanes.csv")
+head(nhanes.2016)
+```
+
+```{r}
+
+# open tidyverse for graphing with ggplot2
+library(package = "tidyverse")
+```
+
+```{r}
+#mean and sd of systolic blood pressure (BPXSY1)
+nhanes.2016 %>%
+  drop_na(BPXSY1) %>%
+  summarize(m.sbp = mean(x = BPXSY1),
+            sd.sbp = sd(x = BPXSY1),
+            n.spb = n())
+```
+```{r}
+# compare means of BPXSY1 across groups
+# gender variable is RIAGENDR
+# 1 is Male and 2 is Female
+nhanes.2016 %>%
+  drop_na(BPXSY1) %>%
+  group_by(RIAGENDR) %>%
+  summarize(m.sbp = mean(x = BPXSY1))
+```
+
+```{r}
+# add labels to gender and rename variables
+nhanes.2016.cleaned <- nhanes.2016 %>%
+  mutate(RIAGENDR = recode_factor(.x = RIAGENDR,
+                                  `1` = 'Male',
+                                  `2` = 'Female')) %>%
+  rename(sex = RIAGENDR) %>%
+  rename(systolic = BPXSY1)
+head(nhanes.2016.cleaned)
+```
+
+```{r}
+# compare means of systolic by gender
+nhanes.2016.cleaned %>%
+  drop_na(systolic) %>%
+  group_by(sex) %>%
+  summarize(m.sbp = mean(x = systolic))
+```
+```{r}
+# density plot of systolic by sex (Figure 6.8)
+dens.sex.bp <- nhanes.2016.cleaned %>%
+  ggplot(aes(x = systolic,
+             fill = sex)) +
+  geom_density(alpha = .8) +
+  theme_minimal() +
+  labs(x = "Systolic blood pressure", y = "Probability density") +
+  scale_fill_manual(values = c('gray', '#7463AC'),
+                    name = "Sex")
+dens.sex.bp
+```
+```{r}
+# compute t-statistic
+
+nhanes.2016.cleaned %>%
+  drop_na(systolic) %>%
+  group_by(sex) %>%
+  summarize(m.sbp = mean(x = systolic),
+            var.sbp = var(x = systolic),
+            samp.size = n())%>%
+  mutate_if (is.numeric, format, 4)
+```
+
+```{r}
+# compare systolic blood pressure for males and females
+twosampt <- t.test(formula = nhanes.2016.cleaned$systolic ~ nhanes.2016.cleaned$sex)
+twosampt
+```
+#2. Restrict the data to a subset of people under 50 years old. Using the appropriate test, compare their mean diastolic blood pressure to the normal threshold of 80. Interpret your results and check the test assumptions. If the test does not meet assumptions, conduct and interpret the appropriate alternate test 
+
+```{r}
+# created subset of age lessthan 50 using filter and stored in a variable
+nhanes.2016.age_lessthan_50 <- nhanes.2016.cleaned %>%
+  filter(nhanes.2016.cleaned$RIDAGEYR < 50)
+head(nhanes.2016.age_lessthan_50)
+
+```
+```{r}
+colSums(nhanes.2016.cleaned != 0)   
+```
+```{r}
+str(nhanes.2016.cleaned)
+```
+
+```{r}
+# mean and standard deviation calculation of diastolic blood pressure (BPXDI1) for a sample under age 50
+nhanes.2016.age_lessthan_50 %>%
+
+  drop_na(BPXDI1) %>%
+  #group_by(RIDAGEYR) %>%
+  summarize(m.dbp = mean(x = BPXDI1),
+            sd.dbp = sd(x = BPXDI1),
+            n.dpb = n())
+```
+
+
+```{r}
+nhanes.2016.cleaned %>%
+  drop_na(BPXDI1) %>%
+  summarize(m.Dbp = mean(x = BPXDI1),
+            sd.dbp = sd(x = BPXDI1),
+            n.dpb = n())
+
+```
+
+
+#Testing normality
+
+```{r}
+nhanes.2016.age_lessthan_50 %>%
+ggplot(aes(x = BPXDI1)) +
+geom_histogram(fill = "#7463AC", col = "white") +
+  theme_minimal() +
+labs(x = "Systolic blood pressure (mmHg)",
+  y = "NHANES RIDAGEYR")
+
+```
+# checking for the data wether it is normally distributed or not
+
+```{r}
+nhanes.2016.age_lessthan_50 %>% 
+  ggplot(aes(x = BPXDI1)) +
+  geom_histogram()
+qqnorm(nhanes.2016.age_lessthan_50$BPXDI1, pch = 1, frame = FALSE)
+qqline(nhanes.2016.age_lessthan_50$BPXDI1, col = "yellow", lwd = 2)
+```
+
+```{r}
+t.test(x = nhanes.2016.age_lessthan_50$BPXDI1, mu = 80)
+```
+
+#kurtosis distribution
+```{r}
+semTools::kurtosis(object = nhanes.2016.age_lessthan_50$BPXDI1)
+
+```
+
+
+#skewness
+
+```{r}
+semTools::skew(object = nhanes.2016.age_lessthan_50$BPXDI1)
+```
+# 3. Restrict the data to a subset of people 50+ years old. Using the appropriate test, compare their mean diastolic blood pressure to the normal threshold of 80. Interpret your results and check the test assumptions. If the test does not meet assumptions, conduct and interpret the appropriate alternate test
+
+```{r}
+# created subset of age greater 50 using filter and stored in a variable
+nhanes.2016.age_greaterthan_50 <- nhanes.2016.cleaned %>%
+  filter(nhanes.2016.cleaned$RIDAGEYR > 50)
+head(nhanes.2016.age_greaterthan_50)
+```
+
+```{r}
+nhanes.2016.age_greaterthan_50 %>%
+
+  drop_na(BPXDI1) %>%
+  #group_by(RIDAGEYR) %>%
+  summarize(m.dbp = mean(x = BPXDI1),
+            sd.dbp = sd(x = BPXDI1),
+            n.dpb = n())
+```
+
+
+
+# checking whether data is normally distributed or not
+```{r}
+nhanes.2016.age_lessthan_50 %>% 
+  ggplot(aes(x = BPXDI1)) +
+  geom_histogram()
+qqnorm(nhanes.2016.age_greaterthan_50$BPXDI1, pch = 1, frame = FALSE)
+qqline(nhanes.2016.age_greaterthan_50$BPXDI1, col = "yellow", lwd = 2)
+```
+
+
+```{r}
+t.test(x = nhanes.2016.age_greaterthan_50$BPXDI1, mu = 80)
+```
+  

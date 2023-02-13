@@ -1,0 +1,32 @@
+---
+output:
+  word_document: default
+  html_document: default
+---
+#1.Load the file in R Studio. Find the population mean and standard deviation of distance to needle exchange. The variable name is VALUE
+
+# here i stored file in a variable 
+assignment_2 <- read.csv("opioid_dist_to_needle_exchange_2018.csv")
+head(assignment_2)
+
+#2.View the data, pick St. Louis County, and compute its z-score for distance to needle exchange. Interpret the z-score.
+
+mean(assignment_2$VALUE)
+sd(assignment_2$VALUE)
+
+
+county <-subset(assignment_2, COUNTY=="St. Louis County")
+
+z_scores <- (assignment_2$VALUE-mean(assignment_2$VALUE))/sd(assignment_2$VALUE)
+
+z_scores
+
+install.packages("dplyr")       
+library("dplyr")
+
+set.seed(143)
+
+sample_n(assignment_2, 500, fac = "COUNTY")$COUNTY 
+
+mean(assignment_2$Sample_n.COUNTY)
+

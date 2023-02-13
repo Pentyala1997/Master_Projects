@@ -1,0 +1,203 @@
+---
+title: "Assignment_4"
+output: word_document
+date: '2022-06-10'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(dplyr)
+library(tidyverse)
+library(assertive, warn.conflicts = FALSE)
+
+```
+  
+```{r}
+# csv file loaded into R and stored in a variable
+assignment_4 <- read.csv("acs_ny.csv")
+head(assignment_4)
+```
+
+#1.a.Create a bar chart for income levels ($50,000 or less, $50,001 - $100,000, $100,001 - $150,000,and more than $150,000) and language spoken at home
+
+
+```{r}
+assignment_4$income_data <- as.factor(ifelse(assignment_4$FamilyIncome <= 50000, 'fifty_k/less',
+                        ifelse((assignment_4$FamilyIncome >= 50001 & assignment_4$FamilyIncome <= 100000),   
+                               'fifty_k-hundred_k',
+                        ifelse((assignment_4$FamilyIncome >= 100001 & assignment_4$FamilyIncome <= 150000), 
+                               'hundred_k-one_fifty_k',
+                        ifelse(assignment_4$FamilyIncome > 150001, 'one_fifty_k+','')))))
+```
+
+# In the above code using as.factor function, all the family income which is stored individually based on the income levels is concatenated and stored in a variable.
+
+```{r}
+colSums(assignment_4==0)
+```
+
+```{r}
+ggplot(assignment_4, aes(income_data, ..count..)) +geom_bar(aes(fill = Language),position="dodge")
+
+```
+
+# from the above barplot we can see that english spoken at home has highest countin all the income levels when compared with other languages.
+#we can see that there are around 65K people in between 50k-100k income level.
+#other langauge people are in low number in all the income levels followed by asian pacific, spanish and other european.
+
+#b. Create a visualization to show the relationship between familyIncome ($50,000 or less, $50,001- $100,000, $100,001 - $150,000, and more than $150,000) and average HouseCost.
+
+
+```{r}
+income <- assignment_4 %>%
+  group_by(income_data) %>%
+  summarise_at(vars(HouseCosts), list(name = mean))
+
+barplot(income$name,
+names.arg = c("50k or less", "50k-100k", " 100k-150k ", "150+"))
+```
+#From the above graph we can see that when the income is more house hold expensives are also more . This may also depends on the count of family members and type of house they are living.
+
+#c. Create scatterplots using R to visualize relationship between the dependent variable (FamilyIncome) and each independent variable
+
+# Dependent variables : When the variable data changes with respective another variables then those varaibles are called Dependent variables
+# Indepedent variables : When the variable data remains constant (not influenced by other variables) then those variables are called independent variables.
+# from the above data we can see that independent variables are number of bedrooms,number of rooms, number of vechiles, number of workers,House cost, Electricity Bill, Number of people and Insurance where as the dependent variable is Family income.
+
+```{r}
+
+        D <- ggplot(data=assignment_4, aes(x = NumBedrooms, y = FamilyIncome)) + geom_point()
+        print(D)
+```
+```{r}
+D1 <- ggplot(data=assignment_4, aes(x =NumChildren , y = FamilyIncome)) + geom_point()
+        print(D1)
+```
+```{r}
+D3 <- ggplot(data=assignment_4, aes(x =NumPeople , y = FamilyIncome)) + geom_point()
+        print(D3)
+```
+```{r}
+ D4 <- ggplot(data=assignment_4, aes(x =NumRooms, y = FamilyIncome)) + geom_point()
+        print(D4)
+```
+
+```{r}
+D5 <- ggplot(data=assignment_4, aes(x =NumVehicles, y = FamilyIncome)) + geom_point()
+        print(D5)
+```
+
+```{r}
+D6 <- ggplot(data=assignment_4, aes(x =NumWorkers, y = FamilyIncome)) + geom_point()
+        print(D6)
+```
+```{r}
+D7 <- ggplot(data=assignment_4, aes(x =HouseCosts, y = FamilyIncome)) + geom_point()
+        print(D7)
+```
+```{r}
+D8 <- ggplot(data=assignment_4, aes(x =ElectricBill, y = FamilyIncome)) + geom_point()
+        print(D7)
+```
+```{r}
+D9 <- ggplot(data=assignment_4, aes(x =Insurance, y = FamilyIncome)) + geom_point()
+        print(D9)
+```
+
+
+
+
+
+#d. Using the dataset, create a multiple regression model in R. The purpose of this model is to predict the household income. 
+#• Create and compare at least four models.
+#• Explain your results including r squared and p-values.
+#• Which model provides better accuracy? Why?
+
+```{r}
+library(MASS)
+
+```
+#model 1
+```{r}
+lm_1 <- lm(FamilyIncome ~ HouseCosts + Insurance + FamilyType + NumBedrooms + NumChildren + NumPeople +   
+            NumRooms + NumVehicles + NumWorkers + OwnRent + ElectricBill + FoodStamp + HeatingFuel + Language, 
+          data = assignment_4) %>%
+stepAIC(trace  = FALSE)
+summary(lm_1)
+confint(lm_1)
+sigma(lm_1)/mean(assignment_4$FamilyIncome)
+```
+#model 2
+
+```{r}
+lm_2 <- lm(FamilyIncome ~ HouseCosts + Insurance + FamilyType + NumBedrooms + NumChildren + NumPeople +   
+            NumRooms + NumVehicles + NumWorkers + OwnRent + ElectricBill , data = assignment_4) %>%
+stepAIC(trace  = FALSE)
+summary(lm_2)
+confint(lm_2)
+sigma(lm_2)/mean(assignment_4$FamilyIncome)
+```
+#model3
+
+```{r}
+lm_3 <- lm(FamilyIncome ~ HouseCosts + Insurance  + NumBedrooms + NumChildren + NumPeople +   
+           NumVehicles + NumWorkers , data = assignment_4) %>%
+stepAIC(trace  = FALSE)
+summary(lm_3)
+confint(lm_3)
+sigma(lm_3)/mean(assignment_4$FamilyIncome)
+```
+#model 4
+
+```{r}
+lm_4 <- lm(FamilyIncome ~ HouseCosts + Insurance  +  NumPeople + NumVehicles  , data = assignment_4)  %>%
+stepAIC(trace  = FALSE)
+summary(lm_4)
+confint(lm_4)
+sigma(lm_4)/mean(assignment_4$FamilyIncome)
+```
+# In the above linear models we found the relation between dependent variable(family income ) and independent variables.
+
+# All the four models p-value has lessthan 0.05. 
+
+#Model accuracy depends on the R-squared (R2) and Residual Standard Error (RSE). In the above models we can see that, when the features are more the model has high R-squared values.
+
+#RSE calculates the prediction error. When the model has least RSE value the more accurate it is.
+
+#In all four models when we include all the features it has least RSE value and model_1 is more accurate when compared to remaining models.
+
+#2. Using the provided subset (acs_ny.csv) of the 2010 American Community Survey (ACS) for New York state, create a logistic regression model in R. The purpose of this model is to predict whether a household has an income greater than $150,000
+
+#creating a new variable for income greater than 150k
+```{r}
+assignment_4$income_greater_150k <- as.factor(ifelse(assignment_4$FamilyIncome >= 150000, 'TRUE', 'FALSE'))
+
+log_reg_model <- glm(income_greater_150k ~ HouseCosts + Insurance + FamilyType + NumBedrooms + NumChildren + 
+                  NumPeople + NumRooms + NumUnits +  NumVehicles + NumWorkers + OwnRent + HouseCosts + 
+                  ElectricBill + FoodStamp + HeatingFuel + Insurance + Language, family = "binomial", 
+                  data = assignment_4)
+summary(log_reg_model)
+```
+#Deviance residuals : The deviation residuals are the easiest to comprehend because when squared, they equal -2 times the log-likelihood. In its most basic form, logistic regression entails fitting the function p=logit1(X) for known X in such a way that the total deviation, which is the sum of squared deviance residuals from all data points, is minimized.
+
+#Each data point's (squared) deviation is equal to (-2 times) the logarithm of the difference in absolute terms between its anticipated probability logit1(X) and the complement of its actual value (1 for a control; a 0 for a case). Because log(1) is 0, a perfect fit of a point (which never happens) results in a deviation of zero. Because -2 times the log of a very tiny value is a huge number, a poorly fitted point has a large residual deviation.
+
+# we can see that median is -0.3834 which is close to zero. So, we can say that it is a good model.
+
+# from the results we can see all variables are satistically significant except NumChildren,HeatingFuelOil, LanguageOther because all the p-values are greater than 0.05.So, we can avoid these features for a better model.
+
+#The AIC, like the cross-validation estimate of predictive fit, can be used to rank models. AIC weights are used to obtain an averaged model or averaged derived parameters when different models are weighted based on their AIC values. Here we can see the AIc value is 17337.
+
+# from the above model we can see that null deviance is more than residual deviance
+
+#The fewer people there are, the more likely they are to earn more than $150,000. Every other parameter has a direct relationship between the dependent and independent variables. This means that the higher the cost of housing, the quantity of insurance paid, the number of bedrooms, automobiles, and the number of workers, the greater the possibility that the family's income will exceed $150,000.
+
+```{r}
+ggplot(assignment_4, aes(x=HouseCosts, y=income_greater_150k)) + geom_point() +
+stat_smooth(method="glm", color="group", se=FALSE,
+method.args = list(family=binomial))
+```
+
+
